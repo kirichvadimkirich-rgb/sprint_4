@@ -6,21 +6,11 @@ class TestBooksCollector:
 
     # проверяем, что после инициализации словарь books_genre пустой.
     def test_initial_books_genre_empty(self, collector):
-        assert collector.books_genre == {}
+        assert collector.get_books_genre() == {}
 
     # проверяем, что после инициализации список избранного пустой.
     def test_initial_favorites_empty(self, collector):
-        assert collector.favorites == []
-
-    # проверяем, что после инициализации список допустимых жанров задан.
-    def test_initial_genre_list_true(self, collector):
-        expected_genre = ['Фантастика', 'Ужасы', 'Детективы', 'Мультфильмы', 'Комедии']
-        assert collector.genre == expected_genre
-
-    # проверяем, что после инициализации список жанров с возрастным рейтингом задан.
-    def test_initial_genre_age_rating_true(self, collector):
-        expected_age_rating = ['Ужасы', 'Детективы']
-        assert collector.genre_age_rating == expected_age_rating
+        assert collector.get_list_of_favorites_books() == []
     
     # проверяем добавления книги с разной длиной имени.
     @pytest.mark.parametrize('name, expected_in_collection', [
@@ -34,31 +24,47 @@ class TestBooksCollector:
         collector.add_new_book(name)
         assert (name in collector.get_books_genre()) == expected_in_collection
    
-    # проверка установки жанра 
+    # проверка установки существующего жанра книге 
     @pytest.mark.parametrize('name, genre, expected_genre', [
     ('Книга_1', 'Фантастика', 'Фантастика'),
     ('Книга_2', 'Ужасы', 'Ужасы'),
     ('Книга_3', 'Детективы', 'Детективы'),
     ('Книга_4', 'Мультфильмы', 'Мультфильмы'),
-    ('Книга_5', 'Комедии', 'Комедии'),
-    ('Книга_недопустимый_жанр', 'Роман', '')               
+    ('Книга_5', 'Комедии', 'Комедии')             
     ])
-    def test_set_book_genre_sets_genre_for_valid_and_returns_empty_for_invalid(self, collector, name, genre, expected_genre):
+    def test_set_book_genre_all_valid_genres(self, collector, name, genre, expected_genre):
         collector.add_new_book(name)
         collector.set_book_genre(name, genre)
         assert collector.get_book_genre(name) == expected_genre
-   
-    # проверка получения списка книг определённого жанра.
+
+    # проверка установки несуществующего жанра книге 
+    @pytest.mark.parametrize('name, genre, expected_genre', [
+    ('Книга_отсутствует_жанр', '', ''),
+    ('Книга_недопустимый_жанр', 'Роман', '')               
+    ])
+    def test_set_book_genre_with_invalid_genre_returns_empty(self, collector, name, genre, expected_genre):
+        collector.add_new_book(name)
+        collector.set_book_genre(name, genre)
+        assert collector.get_book_genre(name) == expected_genre
+
+    # проверка получения списка книг с допустимыми жанрами (включая жанры, по которым нет книг)
     @pytest.mark.parametrize('genre, expected_books', [
     ('Фантастика', ['Книга_1']),
     ('Ужасы', ['Книга_2']),
     ('Детективы', []),
     ('Мультфильмы', ['Книга_3']),
-    ('Комедии', ['Книга_4', 'Книга_5']),
-    ('Неизвестный жанр', [])
+    ('Комедии', ['Книга_4', 'Книга_5'])
     ])
-    def test_get_list_books_with_specific_genre_for_valid_and_returns_empty_for_invalid(self, collector_with_books, genre, expected_books):
+    def test_get_books_with_specific_genre_valid_genres(self, collector_with_books, genre, expected_books):
         assert collector_with_books.get_books_with_specific_genre(genre) == expected_books
+
+    # проверка получения пустого списка книг с недопустимыми жанрами
+    @pytest.mark.parametrize('invalid_genre', [
+    'Неизвестный жанр',
+    ''   
+    ])
+    def test_get_books_with_specific_genre_invalid_genre_returns_empty(self, collector_with_books, invalid_genre):
+        assert collector_with_books.get_books_with_specific_genre(invalid_genre) == []
 
     # проверяем, что после добавления двух книг, метод get_books_genre возвращает корректное кол-во в словаре
     @pytest.mark.parametrize('name_1, name_2', [
@@ -70,52 +76,68 @@ class TestBooksCollector:
         assert len(collector.get_books_genre()) == 2
 
     # проверка получения списка книг, подходящих детям 
-    @pytest.mark.parametrize('books_dict, expected_children', [
-    (
-        {'Книга_1': 'Фантастика', 'Книга_2': 'Ужасы', 'Книга_3': 'Детективы',
-         'Книга_4': 'Мультфильмы', 'Книга_5': 'Комедии'},
-        ['Книга_1', 'Книга_4', 'Книга_5']
-    ),
-    (
-        {'Книга_6': 'Ужасы', 'Книга_7': 'Детективы'},
-        []
-    ),
-    (
-        {},
-        []
-    ),
-    ])
-    def test_get_books_for_children_with_mixed_genres(self, collector, books_dict, expected_children):
+    def test_get_books_for_children_mixed_genres_returns_only_allowed(self, collector):
+        books_dict = {'Книга_1': 'Фантастика', 'Книга_2': 'Ужасы', 'Книга_3': 'Детективы',
+         'Книга_4': 'Мультфильмы', 'Книга_5': 'Комедии'}
+        expected_for_children = ['Книга_1', 'Книга_4', 'Книга_5']
         for name, genre in books_dict.items():
             collector.add_new_book(name)
             collector.set_book_genre(name, genre)
-        assert sorted(collector.get_books_for_children()) == sorted(expected_children)
+        assert sorted(collector.get_books_for_children()) == sorted(expected_for_children)
 
+    # проверка, что если все книги имеют возрастные жанры, результат пуст
+    def test_get_books_for_children_only_adult_genres_returns_empty(self, collector):
+        books = {
+        'Книга_1': 'Ужасы',
+        'Книга_2': 'Детективы'
+        }
+        for name, genre in books.items():
+            collector.add_new_book(name)
+            collector.set_book_genre(name, genre)
+        assert collector.get_books_for_children() == []
 
-    # проверка добавления книги в избранное 
-    @pytest.mark.parametrize('name_add_new_book, name_add_book_in_favorites, repeat_count, expected_list_book_in_favorites', [
-    ('Жизнь', 'Жизнь', 1, ['Жизнь']),   
-    ('', 'Жизнь', 1, []),             
-    ('Жизнь', 'Жизнь', 2, ['Жизнь']),  
-    ])
-    def test_add_book_in_favorites_multiple_scenarios(self, collector, name_add_new_book, name_add_book_in_favorites, repeat_count, expected_list_book_in_favorites):
-        collector.add_new_book(name_add_new_book)
-        for _ in range(repeat_count):
-            collector.add_book_in_favorites(name_add_book_in_favorites)
-        assert collector.get_list_of_favorites_books() == expected_list_book_in_favorites 
+    # проверка, что для пустой коллекции метод возвращает пустой список
+    def test_get_books_for_children_empty_collection_returns_empty(self, collector):
+        assert collector.get_books_for_children() == []
+
+    # проверка успешного добавления книги в избранное 
+    def test_add_book_in_favorites_success(self, collector):
+        collector.add_new_book('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        assert collector.get_list_of_favorites_books() == ['Жизнь']
+
+    # проверка, что нельзя добавить в избранное книгу, отсутствующую в коллекции
+    def test_add_book_in_favorites_does_not_add_missing_book(self, collector):
+        collector.add_book_in_favorites('Жизнь')
+        assert collector.get_list_of_favorites_books() == []
+
+    # проверка, что повторное добавление той же книги не создаёт дубликат
+    def test_add_book_in_favorites_no_duplicate_on_multiple_adds(self, collector):
+        collector.add_new_book('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        assert collector.get_list_of_favorites_books() == ['Жизнь']
+
+    # проверка успешного удаления книги из избранного
+    def test_delete_book_from_favorites_success(self, collector):
+        collector.add_new_book('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        collector.delete_book_from_favorites('Жизнь')  
+        assert collector.get_list_of_favorites_books() == []
+
+    # проверка, что повторное удаление удалённой книги не вызывает ошибок и не меняет список
+    def test_delete_book_from_favorites_multiple_calls_safe(self, collector):
+        collector.add_new_book('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        collector.delete_book_from_favorites('Жизнь')
+        collector.delete_book_from_favorites('Жизнь')
+        assert collector.get_list_of_favorites_books() == []
     
-    # удаляем книгу из Избранного
-    @pytest.mark.parametrize('name_add_book_1, name_add_book_2, name_delete_book, repeat_count, expected_list_book_in_favorites', [
-    ('Жизнь', 'Лидер КМ', 'Лидер КМ', 1, ['Жизнь']),               
-    ('Жизнь', 'Лидер КМ', 'Петр 1', 1, ['Жизнь', 'Лидер КМ']),  
-    ('Жизнь', 'Лидер КМ', 'Жизнь', 2, ['Лидер КМ'])
-    ])
-    def test_delete_book_from_favorites_multiple_scenarios(self, collector, name_add_book_1, name_add_book_2, name_delete_book, repeat_count, expected_list_book_in_favorites):
-        collector.add_new_book(name_add_book_1)
-        collector.add_new_book(name_add_book_2)
-        collector.add_book_in_favorites(name_add_book_1)
-        collector.add_book_in_favorites(name_add_book_2)
-        for _ in range(repeat_count):
-            collector.delete_book_from_favorites(name_delete_book)  
-        assert collector.get_list_of_favorites_books() == expected_list_book_in_favorites
+    # проверка, что попытка удалить книгу, отсутствующую в избранном, не меняет список
+    def test_delete_book_from_favorites_does_nothing_if_book_not_in_favorites(self, collector):
+        collector.add_new_book('Жизнь')
+        collector.add_book_in_favorites('Жизнь')
+        collector.delete_book_from_favorites('Петр 1')
+        assert collector.get_list_of_favorites_books() == ['Жизнь']
+
         
