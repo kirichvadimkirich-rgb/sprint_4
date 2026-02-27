@@ -67,12 +67,9 @@ class TestBooksCollector:
         assert collector_with_books.get_books_with_specific_genre(invalid_genre) == []
 
     # проверяем, что после добавления двух книг, метод get_books_genre возвращает корректное кол-во в словаре
-    @pytest.mark.parametrize('name_1, name_2', [
-    ['Гордость и предубеждение и зомби', 'Что делать, если ваш кот хочет вас убить'] 
-    ])
-    def test_add_new_book_added_two_books(self, collector, name_1, name_2):
-        collector.add_new_book(name_1)
-        collector.add_new_book(name_2)
+    def test_add_new_book_added_two_books(self, collector):
+        collector.add_new_book('Гордость и предубеждение и зомби')
+        collector.add_new_book('Что делать, если ваш кот хочет вас убить')
         assert len(collector.get_books_genre()) == 2
 
     # проверка получения списка книг, подходящих детям 
